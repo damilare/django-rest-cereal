@@ -1,2 +1,3 @@
 django
 djangorestframework==3.2.4
+-e git+https://nl-bot:locum123@github.com/networklocum/cereal@master#egg=cereal

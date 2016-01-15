@@ -97,7 +97,6 @@ class MethodSerializerMixinTest(unittest.TestCase):
             [NestedTestModel.objects.create(val=i) for i in range(2, 5)]
 
     def _get_response(self, request_data, pk):
-        request_data.update({'api_key': settings.APIKEYS["internal"]})
         request = self.request_factory.get('/{0}'.format(pk), request_data)
         api_view = YViewSet.as_view({'get': 'retrieve'})
         response = api_view(request, pk=pk)

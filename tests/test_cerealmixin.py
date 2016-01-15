@@ -196,11 +196,7 @@ class CerealMixinTest(unittest.TestCase):
     '''
 
     request_factory = APIRequestFactory()
-
-    api_key = settings.APIKEYS["internal"]
-    request_data = {
-        'api_key': api_key
-    }
+    request_data = {}
 
     def setUp(self):
         self.client = APIClient()
@@ -372,10 +368,7 @@ class CircularSerializersTest(unittest.TestCase):
 
     request_factory = APIRequestFactory()
     client = APIClient()
-    api_key = settings.APIKEYS["internal"]
-    request_data = {
-        'api_key': api_key
-    }
+    request_data = {}
     url = '/nest/{0}/'
     encoding = 'utf-8'
 
