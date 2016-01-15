@@ -2,7 +2,7 @@ import unittest
 import json
 
 from django.db import models
-from django.conf import settings
+
 from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
     force_authenticate
 from rest_framework.viewsets import ModelViewSet
@@ -10,6 +10,8 @@ from rest_framework.serializers import ModelSerializer
 
 from cereal.mixins import CerealMixin, CerealException
 from cereal.serializers import LazySerializer
+
+from cerealtesting.models import NestedTestModel
 
 
 class RecursiveParseFieldsTest(unittest.TestCase):
@@ -151,14 +153,6 @@ class RecursiveParseFieldsTest(unittest.TestCase):
             assert False, 'Expected error - too few close brackets. No error.'
         except CerealException:
             pass
-
-
-class NestedTestModel(models.Model):
-    val = models.IntegerField()
-    nest = models.ForeignKey('cerebro.NestedTestModel', null=True, blank=True)
-
-    class Meta:
-        app_label = 'cerebro'
 
 
 class NestLevel2TestSerializer(ModelSerializer):

@@ -1,25 +1,14 @@
 import unittest
 import json
 
-from django.db import models
-from django.conf import settings
 from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
     force_authenticate
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer
 
-from biblio_django.rest_framework.mixins import \
-    ResponseControllingParametersMixin, RCPException
-from biblio_django.rest_framework.serializers import LazySerializer, \
-    MethodSerializerMixin
-
-
-class NestedTestModel(models.Model):
-    val = models.IntegerField()
-    nest = models.ForeignKey('cerealtesting.NestedTestModel', null=True, blank=True)
-
-    class Meta:
-        app_label = 'cerealtesting'
+from cereal.mixins import CerealMixin
+from cereal.serializers import MethodSerializerMixin
+from cerealtesting.models import NestedTestModel
 
 
 class XMethodSerializer(MethodSerializerMixin, ModelSerializer):
@@ -29,8 +18,7 @@ class XMethodSerializer(MethodSerializerMixin, ModelSerializer):
         fields = ('val', 'nest')
 
 
-class YMethodSerializer(ResponseControllingParametersMixin,
-                        MethodSerializerMixin, ModelSerializer):
+class YMethodSerializer(CerealMixin, MethodSerializerMixin, ModelSerializer):
     added_xs = XMethodSerializer(method_name='get_nestedtestmodel')
 
     class Meta:
@@ -91,6 +79,7 @@ class MethodSerializerMixinTest(unittest.TestCase):
         self.client = APIClient()
 
     def setUp(self):
+        NestedTestModel.objects.create(val=1)
         self.test_models1 = \
             [NestedTestModel.objects.create(val=i) for i in range(2, 5)]
         self.test_models2 = \

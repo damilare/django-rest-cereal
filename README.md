@@ -4,6 +4,16 @@ http://www.pivotaltracker.com/help/api#Response_Controlling_Parameters
 
 
 To test:
+
+If you don't have mysql installed, you need it:
+
+```
+$ apt-get install libmysqlclient-dev
+$ apt-get install mysql-server
+```
+
+Make the virtualenv and install the requirements:
+
 ```
 $ mkvirtualenv cereal
 $ workon cereal
