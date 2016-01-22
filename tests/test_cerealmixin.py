@@ -11,7 +11,7 @@ from rest_framework.serializers import ModelSerializer
 from cereal.mixins import CerealMixin, CerealException
 from cereal.serializers import LazySerializer
 
-from cerealtesting.models import NestedTestModel
+from cerealtestingapp.models import NestedTestModel
 
 
 class RecursiveParseFieldsTest(unittest.TestCase):
@@ -448,3 +448,9 @@ class CircularSerializersTest(unittest.TestCase):
             json.dumps(json.loads(response.content)),
             json.dumps(expected_response)
         )
+
+# Tests needed:
+
+# duplicate field names requested ex: fields=id,id
+
+#

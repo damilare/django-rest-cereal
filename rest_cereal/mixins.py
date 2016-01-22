@@ -6,8 +6,7 @@ class CerealException(APIException):
 
 
 class CerealMixin(object):
-    '''
-    Inspired by:
+    '''Inspired by:
     http://www.pivotaltracker.com/help/api#Response_Controlling_Parameters
     '''
 
@@ -19,12 +18,17 @@ class CerealMixin(object):
 
     class CerealFields:
         def __init__(self):
-            # list of strings (of field names)
-            # let the serializers deal with duplicate fields
+            # List of strings (of field names).
             self.normal_fields = []
-            # nested_fields is a dict of: 'nested_field_name': CerealFields
+
+            # Nested_fields is a dict of: 'nested_field_name': CerealFields
             self.nested_fields = {}
-            # a set of string options for the serializer
+
+            # A set of (string) options for the serializer. Options can be used
+            # to modify field selection or CerealMixin behaviour. For example,
+            # passing the option :schema could return all the fields available
+            # to be accessed on a serializer instead of returning the serializer
+            # data (:schema is not implemented).
             self.options = set()
 
         def __str__(self):
@@ -35,8 +39,7 @@ class CerealMixin(object):
     @staticmethod
     def parse_fields_to_nested_tree_rec(field_iter, field=None,
                                         close_bracket=False):
-        '''
-        Produces the return CerealFields struct (see above) for the field_iter
+        '''Produces the return CerealFields struct (see above) for the field_iter
         list of strings. Recursively calls itself on nested fields to the nested
         fields' CerealFields until the field_iter is exhausted.
 
@@ -112,8 +115,7 @@ class CerealMixin(object):
 
     @staticmethod
     def parse_fields_to_nested_tree(flat_field_string):
-        '''
-        Produces the tree of serializer fields and options for the
+        '''Produces the tree of serializer fields and options for the
         flat_field_string.
 
         :param flat_field_string: string used to control the serializer used.
@@ -142,8 +144,7 @@ class CerealMixin(object):
         )
 
     def get_field_names(self, declared_fields, info):
-        '''
-        Other options can be applied here before the response-controlling
+        '''Other options can be applied here before the response-controlling
         parameters start changing serializers (options can also be
         used elsewhere).
         :return:
@@ -313,9 +314,7 @@ class CerealMixin(object):
         return fields
 
     def __init__(self, *args, **kwargs):
-        '''
-
-        Assigns a serializer's fields and options recursively (because
+        '''Assigns a serializer's fields and options recursively (because
         serializer fields can be nested with other serializer objects).
 
         :param cereal_fields: CerealFields object

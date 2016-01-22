@@ -8,7 +8,7 @@ from rest_framework.serializers import ModelSerializer
 
 from cereal.mixins import CerealMixin
 from cereal.serializers import MethodSerializerMixin
-from cerealtesting.models import NestedTestModel
+from cerealtestingapp.models import NestedTestModel
 
 
 class XMethodSerializer(MethodSerializerMixin, ModelSerializer):
