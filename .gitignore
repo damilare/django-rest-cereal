@@ -1,0 +1,9 @@
+*.pyc
+.*.swp
+bin
+include
+./lib
+.idea/
+.cache
+.vagrant
+
