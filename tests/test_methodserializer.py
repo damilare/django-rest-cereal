@@ -6,8 +6,8 @@ from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer
 
-from cereal.mixins import CerealMixin
-from cereal.serializers import MethodSerializerMixin
+from rest_cereal.mixins import CerealMixin
+from rest_cereal.serializers import MethodSerializerMixin
 from cerealtestingapp.models import NestedTestModel
 
 
