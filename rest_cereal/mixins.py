@@ -1,3 +1,4 @@
+import random
 from rest_framework.exceptions import APIException
 
 
@@ -150,7 +151,7 @@ class CerealMixin(object):
         :return:
         '''
 
-        cereal_fields = getattr(self.Meta, 'cereal_fields', None)
+        cereal_fields = getattr(self, 'cereal_fields', None)
         is_circular = getattr(self.Meta, 'circular', False)
         if is_circular and not cereal_fields:
             raise CerealException(
@@ -165,7 +166,7 @@ class CerealMixin(object):
             )
 
         has_cereal_fields = len(cereal_fields.normal_fields) > 0 or \
-                         len(cereal_fields.nested_fields) > 0
+                            len(cereal_fields.nested_fields) > 0
         if is_circular and not has_cereal_fields:
             raise CerealException(
                 "Circular Serializer for model {0} had no fields defined in "
@@ -202,10 +203,9 @@ class CerealMixin(object):
                                for field_name in declared_fields
                                if field_name in new_fields}
 
-        field_names = \
-            super(CerealMixin, self).get_field_names(
-                new_declared_fields, info
-            )
+        field_names = super(CerealMixin, self).get_field_names(
+            new_declared_fields, info
+        )
         # Set the fields back to how they are explicitly defined in the
         # serializer class Meta.
         setattr(self.Meta, 'exclude', original_exclude)
@@ -217,20 +217,19 @@ class CerealMixin(object):
         # _declared_fields attribute. Permanently add the mixin to the nested
         # serializers who were selected on this request's use of the serializer.
 
-        meta_cereal_fields = getattr(self.Meta, 'cereal_fields', None)
         is_circular = getattr(self.Meta, 'circular', False)
         depth = getattr(self.Meta, 'depth', None)
-        if not meta_cereal_fields and is_circular and \
-                (depth is None or depth > 0):
+        if not self.cereal_fields and is_circular and depth != 0:
             # protect against circular serializers recursing infinitely
             return {}
-        elif not meta_cereal_fields or (self.REQUIRE_DEFAULT_OPTION and
-                                   'default' in meta_cereal_fields.options):
+
+        if not self.cereal_fields or (self.REQUIRE_DEFAULT_OPTION and
+                                   'default' in self.cereal_fields.options):
             return super(CerealMixin, self).get_fields(
                 *args, **kwargs
             )
 
-        nested_cereal_fields = meta_cereal_fields.nested_fields
+        nested_cereal_fields = self.cereal_fields.nested_fields
         # Save the original fields in original fields and build a new
         # self._declared_fields using the 'normal' declared fields that should
         # stay and the 'nested' declared fields that must be initialized
@@ -239,7 +238,7 @@ class CerealMixin(object):
         self._declared_fields = {field_name: original_fields[field_name]
                                  for field_name in original_fields
                                  if field_name in
-                                 meta_cereal_fields.normal_fields}
+                                 self.cereal_fields.normal_fields}
         for nested_field_key in nested_cereal_fields:
             if nested_field_key not in original_fields:
                 self._declared_fields = original_fields
@@ -281,8 +280,7 @@ class CerealMixin(object):
                 source = None
             new_field = new_field_class(
                 source=source,
-                cereal_fields=nested_cereal_fields[nested_field_key],
-                depth=depth + 1
+                cereal_fields=nested_cereal_fields[nested_field_key]
             )
             if many:
                 list_field.child = new_field
@@ -292,24 +290,10 @@ class CerealMixin(object):
         fields = super(CerealMixin, self).get_fields(
             *args, **kwargs
         )
-        # Erase the cereal_fields on meta and reset the fields of the
-        # serializer, or they will be picked up in error on future requests
-        # which don't specify fields.
-        setattr(self.Meta, 'cereal_fields', None)
-        setattr(self.Meta, 'depth', None)
-        if meta_cereal_fields:
+        # Reset the fields of the serializer, or they will be picked up in
+        # error on future requests which don't specify fields.
+        if self.cereal_fields:
             self._declared_fields = original_fields
-
-
-        # Ok, so this str(fields) is here because it seems to trigger the fields to have to actually do all the
-        # setup in order right now, and without it we get an intermittent problem where the the dictionaries
-        # get looped over in some non-deterministic way (Warning: working theory only!). This causes
-        # repeated instance of the same serializer [ e.g. fields=job(locum(id),partapplication(locum(name)) ]
-        # to return an empty output `{}` for the second instance.
-        #
-        # Our level of confidence around this fix is fairly low, but it's all we've got right now.
-
-        str(fields)
 
         return fields
 
@@ -321,18 +305,7 @@ class CerealMixin(object):
 
         '''
 
-        depth = kwargs.pop('depth', None)
         has_request = kwargs.get('context') and kwargs['context'].get('request')
-        if depth is None:
-            depth = getattr(self.Meta, 'depth', None)
-            # self.Meta.depth may be None and depth=None may be passed into
-            # kwargs.
-            if depth is None and has_request:
-                depth = 0
-            elif depth == 0:
-                # this case happens in circular nesting, causes errors
-                depth = 1
-        setattr(self.Meta, 'depth', depth)
 
         if has_request:
             # the base-level serializer
@@ -345,34 +318,25 @@ class CerealMixin(object):
                 # must be computed once by the top-level serializer.
                 cereal_fields = \
                     self.parse_fields_to_nested_tree(fields_parameter)
+
+                # We don't want weird behavior resulting from serializers being
+                # prevented from nesting further because of this Meta depth
+                # attribute.
+                self.Meta.depth = 10
             else:
                 # Allow for requests without fields defined
                 cereal_fields = None
-        elif depth is None:
-            # If there's no request and no depth, it means the class is being
-            # initially instantiated.
-
-            # If there is no fields parameter, but there are LazySerializer
-            # fields defined in the Serializer, those LazySerializer fields
-            # have been converted into normal serializers and can
-            # potentially be infinitely nested when returning data.
-            # Django rest framework appears to prevent this kind of
-            # infinite nesting. If this needs to be actioned, we would do it
-            # here.
-            cereal_fields = getattr(self.Meta, 'cereal_fields', None)
         else:
+            # We don't want weird behavior resulting from serializers being
+            # prevented from nesting further because of this Meta depth
+            # attribute.
+            self.Meta.depth = 10
+
             cereal_fields = kwargs.pop(
-                'cereal_fields',
-                getattr(self.Meta, 'cereal_fields', None)
+                'cereal_fields', getattr(self, 'cereal_fields', None)
             )
-            if cereal_fields is None:
-                # This can happen with circular nested serializers that don't
-                # use a nest in fields. This nested serializer is constructed
-                # with a deepcopy on the parent serializer's
-                # self._declared_fields, but this nested serializer will
-                # not be used.
-                self.Meta.fields = {}
-        setattr(self.Meta, 'cereal_fields', cereal_fields)
+
+        self.cereal_fields = cereal_fields
 
         super(CerealMixin, self).__init__(
             *args, **kwargs
