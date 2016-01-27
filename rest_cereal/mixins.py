@@ -275,7 +275,9 @@ class CerealMixin(object):
             # Create a new object with the new list of base classes (including
             # CerealMixin).
             # The source of the field mustn't be redundant.
-            source = getattr(original_field.Meta, 'source', None)
+            source = getattr(
+                getattr(original_field, 'Meta', None), 'source', None
+            )
             if source == nested_field_key:
                 source = None
             new_field = new_field_class(
