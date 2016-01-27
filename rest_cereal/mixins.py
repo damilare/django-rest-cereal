@@ -333,7 +333,8 @@ class CerealMixin(object):
             # We don't want weird behavior resulting from serializers being
             # prevented from nesting further because of this Meta depth
             # attribute.
-            self.Meta.depth = 10
+            if getattr(self, 'Meta', None):
+                self.Meta.depth = 10
 
             cereal_fields = kwargs.pop(
                 'cereal_fields', getattr(self, 'cereal_fields', None)
