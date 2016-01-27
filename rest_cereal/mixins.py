@@ -1,5 +1,6 @@
 import random
 from rest_framework.exceptions import APIException
+from rest_cereal.serializers import MethodSerializerMixin
 
 
 class CerealException(APIException):
@@ -284,7 +285,8 @@ class CerealMixin(object):
                 source = None
             new_field = new_field_class(
                 source=source,
-                cereal_fields=nested_cereal_fields[nested_field_key]
+                cereal_fields=nested_cereal_fields[nested_field_key],
+                method_name=getattr(original_field, 'method_name', None)
             )
             if many:
                 list_field.child = new_field
@@ -343,6 +345,17 @@ class CerealMixin(object):
             )
 
         self.cereal_fields = cereal_fields
+
+        # This would ideally be in the MethodSerializerMixin class, but DRF
+        # Field doesn't allow for unused kwargs, and serializers with the
+        # CerealMixin don't always inherit the MethodSerializerMixin mixin.
+        # The __bases__[0] is necessary because a MethodSerializerMixin will be
+        # hiding behind a temporary class created by this serializer's parent.
+        bases = self.__class__.__bases__
+        parent_bases = self.__class__.__bases__[0].__bases__
+        if MethodSerializerMixin not in bases and \
+                        MethodSerializerMixin not in parent_bases:
+            kwargs.pop('method_name', None)
 
         super(CerealMixin, self).__init__(
             *args, **kwargs
