@@ -9,7 +9,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer
 
 from rest_cereal.mixins import CerealMixin, CerealException
-from rest_cereal.serializers import LazySerializer
+from rest_cereal.serializers import LazySerializer, MethodSerializerMixin
 
 from cerealtestingapp.models import NestedTestModel, TwoNestedTestModel
 
@@ -456,13 +456,28 @@ class CircularSerializersTest(unittest.TestCase):
         )
 
 
+class MethodTestSerializer(CerealMixin, MethodSerializerMixin, ModelSerializer):
+
+    class Meta:
+        model = NestedTestModel
+        fields = ('val')
+
+
 class TwoNestTestSerializer(CerealMixin, ModelSerializer):
     nest1 = CircularTestSerializer1()
     nest2 = CircularTestSerializer1()
+    nest3 = MethodTestSerializer(method_name='get_nest3')
+    nest4 = MethodTestSerializer(method_name='get_nest4')
 
     class Meta:
         model = TwoNestedTestModel
-        fields = ('val', 'nest1', 'nest2')
+        fields = ('val', 'nest1', 'nest2', 'nest3', 'nest4')
+
+    def get_nest3(self, obj):
+        return [obj.nest1, obj.nest2]
+
+    def get_nest4(self, obj):
+        return [obj.nest2, obj.nest1]
 
 
 class TwoNestTestView(ModelViewSet):
@@ -537,6 +552,19 @@ class MultipleNestingSerializersTest(unittest.TestCase):
             '{"nest1":{"val":4},"nest2":{"nest":{"nest":{"id":' +
             str(self.nested2.id) + '}}}}'
         )
+        self.assertEqual(
+            json.dumps(json.loads(response.content)),
+            json.dumps(expected_response)
+        )
+
+    def test_same_methodserializer_twice_different_places_same_nest_level(self):
+
+        fields_string = 'nest3(val),nest4(id)'
+        response = self._get_response_from_view1(fields_string)
+        expected_response = {
+            "nest3": [{"val": 4}, {"val": 5}],
+            "nest4": [{"id": self.nested2.id}, {"id": + self.nested1.id}]
+        }
         self.assertEqual(
             json.dumps(json.loads(response.content)),
             json.dumps(expected_response)
