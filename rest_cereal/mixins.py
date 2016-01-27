@@ -152,7 +152,7 @@ class CerealMixin(object):
         '''
 
         cereal_fields = getattr(self, 'cereal_fields', None)
-        is_circular = getattr(self.Meta, 'circular', False)
+        is_circular = getattr(getattr(self, 'Meta', None), 'circular', False)
         if is_circular and not cereal_fields:
             raise CerealException(
                 "'fields' query parameter must be defined in this "
@@ -213,12 +213,16 @@ class CerealMixin(object):
         return field_names
 
     def get_fields(self, *args, **kwargs):
-        # The get_fields method selects from the fields defined in its
-        # _declared_fields attribute. Permanently add the mixin to the nested
-        # serializers who were selected on this request's use of the serializer.
+        '''The get_fields method selects from the fields defined in its
+        _declared_fields attribute. Permanently add the mixin to the nested
+        serializers who were selected on this request's use of the serializer.
+        '''
 
-        is_circular = getattr(self.Meta, 'circular', False)
-        depth = getattr(self.Meta, 'depth', None)
+        # Meta doesn't exist on SerializerMethodField serializers
+        meta = getattr(self, 'Meta', None)
+
+        is_circular = getattr(meta, 'circular', False)
+        depth = getattr(meta, 'depth', None)
         if not self.cereal_fields and is_circular and depth != 0:
             # protect against circular serializers recursing infinitely
             return {}
@@ -275,9 +279,7 @@ class CerealMixin(object):
             # Create a new object with the new list of base classes (including
             # CerealMixin).
             # The source of the field mustn't be redundant.
-            source = getattr(
-                getattr(original_field, 'Meta', None), 'source', None
-            )
+            source = getattr(meta, 'source', None)
             if source == nested_field_key:
                 source = None
             new_field = new_field_class(
