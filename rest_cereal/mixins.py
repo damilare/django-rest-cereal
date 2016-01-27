@@ -350,7 +350,7 @@ class CerealMixin(object):
 
         # Don't allow requests without fields to hit endpoints with
         # circular serializers
-        is_circular = getattr(self.Meta, 'circular', False)
+        is_circular = getattr(getattr(self, 'Meta', None), 'circular', False)
         if is_circular and has_request and not fields_parameter:
             raise CerealException(
                 "'fields' query parameter must be defined in this "
