@@ -164,6 +164,22 @@ class LeagueCircularMethodSerializer(CerealMixin, MethodSerializerMixin,
             'parent_league'
         )
 
+# *** Any serializer that has a LazySerializer inside must be put here. ***
+# *** The serializers referenced in the LazySerializer must be accessible in
+# the namespace passed in to the convert_serializers method. ***
+#
+# This is required for LazySerializers to resolve properly. It's necessary
+# because of circular nesting - the serializers being referenced haven't been
+# initialized yet.
+LazySerializer.convert_serializers(
+    globals(),
+    [
+        PlayerCircularMethodSerializer,
+        TeamCircularSerializer,
+        LeagueCircularMethodSerializer
+    ]
+)
+
 
 ###
 # views.py
