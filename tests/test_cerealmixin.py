@@ -8,10 +8,10 @@ from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer
 
-from cereal.mixins import CerealMixin, CerealException
-from cereal.serializers import LazySerializer
+from rest_cereal.mixins import CerealMixin, CerealException
+from rest_cereal.serializers import LazySerializer, MethodSerializerMixin
 
-from cerealtestingapp.models import NestedTestModel
+from cerealtestingapp.models import NestedTestModel, TwoNestedTestModel
 
 
 class RecursiveParseFieldsTest(unittest.TestCase):
@@ -317,9 +317,16 @@ class CerealMixinTest(unittest.TestCase):
             '{"val":3,"nest":{"val":2,"nest":{"val":1}}}'
         )
 
+    def test_duplicate_fields_requested(self):
+        fields_string = 'val,val'
+        response = self._get_response(fields_string)
+        self.assertEqual(
+            response.content,
+            '{"val":3}'
+        )
 
-class CircularTestSerializer1(CerealMixin,
-                              ModelSerializer):
+
+class CircularTestSerializer1(CerealMixin, ModelSerializer):
     nest = LazySerializer('CircularTestSerializer2')
 
     class Meta:
@@ -328,8 +335,7 @@ class CircularTestSerializer1(CerealMixin,
         circular = True
 
 
-class CircularTestSerializer2(CerealMixin,
-                              ModelSerializer):
+class CircularTestSerializer2(CerealMixin, ModelSerializer):
     nest = LazySerializer('CircularTestSerializer1')
 
     class Meta:
@@ -449,8 +455,117 @@ class CircularSerializersTest(unittest.TestCase):
             json.dumps(expected_response)
         )
 
-# Tests needed:
 
-# duplicate field names requested ex: fields=id,id
+class MethodTestSerializer(CerealMixin, MethodSerializerMixin, ModelSerializer):
 
-#
+    class Meta:
+        model = NestedTestModel
+        fields = ('val')
+
+
+class TwoNestTestSerializer(CerealMixin, ModelSerializer):
+    nest1 = CircularTestSerializer1()
+    nest2 = CircularTestSerializer1()
+    nest3 = MethodTestSerializer(method_name='get_nest3')
+    nest4 = MethodTestSerializer(method_name='get_nest4')
+
+    class Meta:
+        model = TwoNestedTestModel
+        fields = ('val', 'nest1', 'nest2', 'nest3', 'nest4')
+
+    def get_nest3(self, obj):
+        return [obj.nest1, obj.nest2]
+
+    def get_nest4(self, obj):
+        return [obj.nest2, obj.nest1]
+
+
+class TwoNestTestView(ModelViewSet):
+    model = TwoNestedTestModel
+    serializer_class = TwoNestTestSerializer
+    queryset = TwoNestedTestModel.objects.all()
+
+
+class MultipleNestingSerializersTest(unittest.TestCase):
+    '''Test edge cases of reusing the same serializers at different nesting
+    levels.
+    '''
+
+    request_factory = APIRequestFactory()
+    client = APIClient()
+    request_data = {}
+    url = '/twonest/{0}/'
+    encoding = 'utf-8'
+
+    def setUp(self):
+        self.nested1 = NestedTestModel.objects.create(val=4)
+        self.nested2 = NestedTestModel.objects.create(nest=self.nested1, val=5)
+        self.nested1.nest = self.nested2
+        self.nested1.save()
+        self.twonested = TwoNestedTestModel.objects.create(
+            val=6,
+            nest1=self.nested1,
+            nest2=self.nested2
+        )
+
+    def _get_response_from_view1(self, fields_string):
+        if fields_string is not None:
+            self.request_data['fields'] = fields_string
+        else:
+            del self.request_data['fields']
+        request = self.request_factory.get(
+            self.url.format(self.twonested.id), self.request_data
+        )
+
+        api_view1 = TwoNestTestView.as_view({'get': 'retrieve'})
+        response = api_view1(request, pk=self.twonested.id)
+        response.render()
+        return response
+
+    def test_same_serializer_twice_different_places_same_nest_level(self):
+        '''A bug was coming up where doing a request with something like:
+        fields=y(x(some_field)),z(x(other_field))
+        was causing the x(other_field) to non-deterministically return empty
+        values when there should have been values. A very difficult to debug
+        Heisenbug because inspecting the fields caused everything to work (the
+        problem seemed to be affected by the order of items in the
+        serializer's fields dictionary), which was temporarily fixed by
+        executing `str(fields)` within the get_fields(...) method.
+        :return:
+        '''
+
+        fields_string = 'nest1(val),nest2(id)'
+        response = self._get_response_from_view1(fields_string)
+        expected_response = json.loads(
+            '{"nest1":{"val":4},"nest2":{"id":' + str(self.nested2.id) + '}}'
+        )
+        self.assertEqual(
+            json.dumps(json.loads(response.content)),
+            json.dumps(expected_response)
+        )
+
+    def test_same_serializer_twice_different_places_different_nest_level(self):
+
+        fields_string = 'nest1(val),nest2(nest(nest(id)))'
+        response = self._get_response_from_view1(fields_string)
+        expected_response = json.loads(
+            '{"nest1":{"val":4},"nest2":{"nest":{"nest":{"id":' +
+            str(self.nested2.id) + '}}}}'
+        )
+        self.assertEqual(
+            json.dumps(json.loads(response.content)),
+            json.dumps(expected_response)
+        )
+
+    def test_same_methodserializer_twice_different_places_same_nest_level(self):
+
+        fields_string = 'nest3(val),nest4(id)'
+        response = self._get_response_from_view1(fields_string)
+        expected_response = {
+            "nest3": [{"val": 4}, {"val": 5}],
+            "nest4": [{"id": self.nested2.id}, {"id": + self.nested1.id}]
+        }
+        self.assertEqual(
+            json.dumps(json.loads(response.content)),
+            json.dumps(expected_response)
+        )
