@@ -64,3 +64,17 @@ class League(models.Model):
 from rest_framework.serializers import ModelSerializer
 from rest_framework.exceptions import APIException
 
+
+class BadRequest(APIException):
+    status_code = 400
+    default_detail = 'Bad request.'
+
+
+class FlatPlayerSerializer(ModelSerializer):
+
+    class Meta:
+        model = Player
+        fields = (
+            'id', 'field1', 'field2', 'field3'
+        )
+
