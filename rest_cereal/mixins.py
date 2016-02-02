@@ -286,11 +286,9 @@ class CerealMixin(object):
             new_field = new_field_class(
                 source=source,
                 cereal_fields=nested_cereal_fields[nested_field_key],
-                method_name=getattr(original_field, 'method_name', None)
+                method_name=getattr(original_field, 'method_name', None),
+                many=many
             )
-            if many:
-                list_field.child = new_field
-                new_field = list_field
             self._declared_fields[nested_field_key] = new_field
 
         fields = super(CerealMixin, self).get_fields(
