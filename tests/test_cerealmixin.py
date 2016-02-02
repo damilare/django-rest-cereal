@@ -1,8 +1,6 @@
 import unittest
 import json
 
-from django.db import models
-
 from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
     force_authenticate
 from rest_framework.viewsets import ModelViewSet
@@ -11,7 +9,8 @@ from rest_framework.serializers import ModelSerializer
 from rest_cereal.mixins import CerealMixin, CerealException
 from rest_cereal.serializers import LazySerializer, MethodSerializerMixin
 
-from cerealtestingapp.models import NestedTestModel, TwoNestedTestModel
+from cerealtestingapp.models import NestedTestModel, TwoNestedTestModel, \
+    ManyNestedTestModel
 
 
 class RecursiveParseFieldsTest(unittest.TestCase):
@@ -344,6 +343,15 @@ class CircularTestSerializer2(CerealMixin, ModelSerializer):
         circular = True
 
 
+class CircularTestManySerializer(CerealMixin, ModelSerializer):
+    nests = LazySerializer('CircularTestSerializer1', many=True)
+
+    class Meta:
+        model = ManyNestedTestModel
+        fields = ('val', 'nests')
+        circular = True
+
+
 class CircularTestView1(ModelViewSet):
     model = NestedTestModel
     serializer_class = CircularTestSerializer1
@@ -357,7 +365,12 @@ class CircularTestView2(ModelViewSet):
 
 
 LazySerializer.convert_serializers(
-    globals(), [CircularTestSerializer1, CircularTestSerializer2]
+    globals(),
+    [
+        CircularTestSerializer1,
+        CircularTestSerializer2,
+        CircularTestManySerializer
+    ]
 )
 
 
@@ -456,11 +469,59 @@ class CircularSerializersTest(unittest.TestCase):
         )
 
 
+class CircularTestManyView(ModelViewSet):
+    model = ManyNestedTestModel
+    serializer_class = CircularTestManySerializer
+    queryset = ManyNestedTestModel.objects.all()
+
+
+class CircularM2MSerializersTest(unittest.TestCase):
+    '''
+    Test circular referencing of serializers and the LazySerializer.
+    '''
+
+    request_factory = APIRequestFactory()
+    client = APIClient()
+    request_data = {}
+    url = '/nest/{0}/'
+    encoding = 'utf-8'
+
+    def setUp(self):
+        self.nests = [NestedTestModel.objects.create(val=i) for i in range(3)]
+        self.manynestmodel = ManyNestedTestModel.objects.create(val=0)
+        self.manynestmodel.nests.add(*self.nests)
+
+    def _get_response_from_view1(self, fields_string):
+        if fields_string is not None:
+            self.request_data['fields'] = fields_string
+        else:
+            del self.request_data['fields']
+        request = self.request_factory.get(
+            self.url.format(self.manynestmodel.id), self.request_data
+        )
+
+        api_view1 = CircularTestManyView.as_view({'get': 'retrieve'})
+        response = api_view1(request, pk=self.manynestmodel.id)
+        response.render()
+        return response
+
+    def test_circular_nesting_first_defined_view(self):
+        fields_string = 'nests(val)'
+        response = self._get_response_from_view1(fields_string)
+        expected_response = json.loads(
+            '{"nests":[{"val":0},{"val":1},{"val":2}]}'
+        )
+        self.assertEqual(
+            json.dumps(json.loads(response.content)),
+            json.dumps(expected_response)
+        )
+
+
 class MethodTestSerializer(CerealMixin, MethodSerializerMixin, ModelSerializer):
 
     class Meta:
         model = NestedTestModel
-        fields = ('val')
+        fields = ('val',)
 
 
 class TwoNestTestSerializer(CerealMixin, ModelSerializer):

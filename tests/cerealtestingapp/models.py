@@ -13,3 +13,9 @@ class TwoNestedTestModel(models.Model):
                               default=None, related_name='twonestedparent1')
     nest2 = models.ForeignKey(NestedTestModel, null=True, blank=True,
                               default=None, related_name='twonestedparent2')
+
+
+class ManyNestedTestModel(models.Model):
+    val = models.IntegerField()
+    nests = models.ManyToManyField(NestedTestModel)
+
