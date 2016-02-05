@@ -291,7 +291,7 @@ response = requests.get(
 # (the captains of 1st place teams).
 
 response = requests.get(
-    url='http://localhost/player/21/',
+    url='http://localhost/player/',
     query_params='fields=id,field1,team(id,field2)&is_captain=true'
                  '&team_rank=1'
 )
