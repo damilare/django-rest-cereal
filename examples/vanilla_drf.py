@@ -216,10 +216,46 @@ class PlayersJoinedInMonthView(APIView):
         #################finish this part
         return league.players.filter(field1=month)
 
+
+###
+# URLs
+###
+from django.conf.urls import patterns, url
+
+urlpatterns = patterns(
+    url(
+        r'^player/(?P<pk>\d+)/?$',
+        PlayerViewSet.as_view({'get': 'retrieve'}),
+        name='player_detail'
+    ),
+    url(
+        r'^player/search/?$',
+        PlayersSearchListView.as_view({'get': 'list'}),
+        name='player_search'
+    ),
+    url(
+        r'^team/(?P<pk>\d+)/?$',
+        TeamViewSet.as_view({'get': 'retrieve'}),
+        name='team_detail'
+    ),
+    url(
+        r'^team/(?P<pk>\d+)/players-joined-in-month?$',
+        PlayersJoinedInMonthView.as_view({'get': 'retrieve'}),
+        name='players_joined_in_month'
+    ),
+    url(
+        r'^league/(?P<pk>\d+)/?$',
+        LeagueViewSet.as_view({'get': 'retrieve'}),
+        name='league_detail'
+    ),
+)
+
+
 ###
 # Example requests
 ###
 import requests
+import json
 
 # 1.
 # I want some basic details about a player.
@@ -259,13 +295,22 @@ response = requests.get(
 # 6.
 # I want deep details about a league - parent league winter info
 
-parent_fields = 'id,teams(winter_leagues(id),players_joined_in_month(id)'
-response = requests.get(
-    url='http://localhost/league/21/',
-    query_params='fields=id,field1,parent_league({parent_fields})'
-                 '&month=10'.format(**locals)
-    ########### second request needed
-)
-need second request to get parent league data
-need third set of requests to get teams winter league data
-need fourth request to get players join in month 
+league = json.loads(requests.get(
+    url='http://localhost/league/21/'
+))
+parent_league = league['parent_league']['id']
+parent_league = json.loads(requests.get(
+    url='http://localhost/league/' + str(parent_league) + '/'
+))
+
+teams = {}
+for team in parent_league['teams']:
+    teams_and_their_winter_leagues[team['id']] = json.loads(requests.get(
+        url='http://localhost/' + team['id'] + '/'
+    ))
+    teams_and_their_winter_leagues[team['id']]['players_joined_in_october'] = \
+        json.loads(requests.get(
+            url='http://localhost/team/{0}/players-joined-in/?month=10'.format(
+                team['id'])
+        ))
+
