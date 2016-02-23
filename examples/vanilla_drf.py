@@ -6,6 +6,72 @@
 # but this makes vanilla vs cereal easier to compare.
 
 ###
+# Example requests
+###
+import requests
+import json
+
+# 1.
+# I want some basic details about a player.
+response = requests.get(
+    url='http://localhost/player/21/'
+)
+
+# 2.
+# I want some deeper details about a player
+response = requests.get(
+    url='http://localhost/player/21/',
+)
+
+
+# 3.
+# I want to search for players with some properties
+# (the captains of 1st place teams).
+
+response = requests.get(
+    url='http://localhost/player/',
+    query_params='is_captain=true&team_rank=1'
+)
+
+# 4.
+# I want some details about a team and their summer activity
+response = requests.get(
+    url='http://localhost/team/21/'
+)
+
+# 5.
+# I want basic details about a league
+
+response = requests.get(
+    url='http://localhost/league/21/'
+)
+
+# 6.
+# I want deep details about a league - parent league winter info
+
+league = json.loads(requests.get(
+    url='http://localhost/league/21/'
+))
+parent_league = league['parent_league']['id']
+parent_league = json.loads(requests.get(
+    url='http://localhost/league/' + str(parent_league) + '/'
+))
+
+teams = {}
+for team in parent_league['teams']:
+    teams_and_their_winter_leagues[team['id']] = json.loads(requests.get(
+        url='http://localhost/' + team['id'] + '/'
+    ))
+    teams_and_their_winter_leagues[team['id']]['players_joined_in_october'] = \
+        json.loads(requests.get(
+            url='http://localhost/team/{0}/players-joined-in/?month=10'.format(
+                team['id'])
+        ))
+
+
+
+
+###
 # models.py
 ###
 from django.db import models
@@ -156,6 +222,30 @@ class PlayerSerializer(ModelSerializer):
             'field7', 'field8', 'field9', 'teams', 'leagues'
         )
 
+# Padding to make the files the same size
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###
 # views.py
@@ -249,68 +339,3 @@ urlpatterns = patterns(
         name='league_detail'
     ),
 )
-
-
-###
-# Example requests
-###
-import requests
-import json
-
-# 1.
-# I want some basic details about a player.
-response = requests.get(
-    url='http://localhost/player/21/'
-)
-
-# 2.
-# I want some deeper details about a player
-response = requests.get(
-    url='http://localhost/player/21/',
-)
-
-
-# 3.
-# I want to search for players with some properties
-# (the captains of 1st place teams).
-
-response = requests.get(
-    url='http://localhost/player/',
-    query_params='is_captain=true&team_rank=1'
-)
-
-# 4.
-# I want some details about a team and their summer activity
-response = requests.get(
-    url='http://localhost/team/21/'
-)
-
-# 5.
-# I want basic details about a league
-
-response = requests.get(
-    url='http://localhost/league/21/'
-)
-
-# 6.
-# I want deep details about a league - parent league winter info
-
-league = json.loads(requests.get(
-    url='http://localhost/league/21/'
-))
-parent_league = league['parent_league']['id']
-parent_league = json.loads(requests.get(
-    url='http://localhost/league/' + str(parent_league) + '/'
-))
-
-teams = {}
-for team in parent_league['teams']:
-    teams_and_their_winter_leagues[team['id']] = json.loads(requests.get(
-        url='http://localhost/' + team['id'] + '/'
-    ))
-    teams_and_their_winter_leagues[team['id']]['players_joined_in_october'] = \
-        json.loads(requests.get(
-            url='http://localhost/team/{0}/players-joined-in/?month=10'.format(
-                team['id'])
-        ))
-

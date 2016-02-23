@@ -6,6 +6,72 @@
 # but this makes vanilla vs cereal easier to compare.
 
 ###
+# Example requests
+###
+import requests
+
+# 1.
+# I want some basic details about a player
+response = requests.get(
+    url='http://localhost/player/21/',
+    query_params='fields=id,field1,field2'
+)
+
+# 2.
+# I want some deeper details about a player
+captain_fields = 'id,field3'
+team_fields = 'id,field1,captain({captain_fields})'.format(**locals)
+league_fields = 'id,field2'
+
+# equivalent to '(id,field1,teams(id,field1,captain(id,field3)),leagues(...
+fields = 'id,field1,teams({team_fields}),leagues({league_fields})'.format(
+    **locals)
+
+response = requests.get(
+    url='http://localhost/player/21/',
+    query_params='fields=' + fields
+)
+
+
+# 3.
+# I want to search for players with some properties
+# (the captains of 1st place teams).
+
+response = requests.get(
+    url='http://localhost/player/',
+    query_params='fields=id,field1,team(id,field2)&is_captain=true'
+                 '&team_rank=1'
+)
+
+# 4.
+# I want some details about a team and their summer activity
+response = requests.get(
+    url='http://localhost/team/21/',
+    query_params='fields=id,field1,players_joined_in_month(id),'
+                 'summer_leagues(id,field1)'
+                 '&month=6'
+)
+
+# 5.
+# I want basic details about a league
+
+response = requests.get(
+    url='http://localhost/league/21/',
+    query_params='fields=id,field1'
+)
+
+# 6.
+# I want deep details about a league - parent league winter info
+
+parent_fields = 'id,teams(winter_leagues(id),players_joined_in_month(id)'
+response = requests.get(
+    url='http://localhost/league/21/',
+    query_params='fields=id,field1,parent_league({parent_fields})'
+                 '&month=10'.format(**locals)
+)
+
+
+###
 # models.py
 ###
 from django.db import models
@@ -230,6 +296,17 @@ class LeagueViewSet(ModelViewSet):
     queryset = League.objects.all()
 
 
+# Padding to make the files equal
+
+
+
+
+
+
+
+
+
+
 ###
 # URLs
 ###
@@ -258,67 +335,7 @@ urlpatterns = patterns(
     ),
 )
 
-###
-# Example requests
-###
-import requests
-
-# 1.
-# I want some basic details about a player
-response = requests.get(
-    url='http://localhost/player/21/',
-    query_params='fields=id,field1,field2'
-)
-
-# 2.
-# I want some deeper details about a player
-captain_fields = 'id,field3'
-team_fields = 'id,field1,captain({captain_fields})'.format(**locals)
-league_fields = 'id,field2'
-
-# equivalent to '(id,field1,teams(id,field1,captain(id,field3)),leagues(...
-fields = 'id,field1,teams({team_fields}),leagues({league_fields})'.format(
-    **locals)
-
-response = requests.get(
-    url='http://localhost/player/21/',
-    query_params='fields=' + fields
-)
 
 
-# 3.
-# I want to search for players with some properties
-# (the captains of 1st place teams).
 
-response = requests.get(
-    url='http://localhost/player/',
-    query_params='fields=id,field1,team(id,field2)&is_captain=true'
-                 '&team_rank=1'
-)
 
-# 4.
-# I want some details about a team and their summer activity
-response = requests.get(
-    url='http://localhost/team/21/',
-    query_params='fields=id,field1,players_joined_in_month(id),'
-                 'summer_leagues(id,field1)'
-                 '&month=6'
-)
-
-# 5.
-# I want basic details about a league
-
-response = requests.get(
-    url='http://localhost/league/21/',
-    query_params='fields=id,field1'
-)
-
-# 6.
-# I want deep details about a league - parent league winter info
-
-parent_fields = 'id,teams(winter_leagues(id),players_joined_in_month(id)'
-response = requests.get(
-    url='http://localhost/league/21/',
-    query_params='fields=id,field1,parent_league({parent_fields})'
-                 '&month=10'.format(**locals)
-)
