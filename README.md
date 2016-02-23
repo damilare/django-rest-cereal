@@ -21,7 +21,7 @@ Some reasons you may want to use Cereal:
 ## Example
 
 ### Compare with vanilla DRF
-TODO
+https://github.com/networklocum/django-rest-cereal/tree/master/examples
 
 ### Backwards compatibility
 TODO
