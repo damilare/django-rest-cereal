@@ -7,16 +7,17 @@ class CerealException(APIException):
     status_code = 400
 
 
-class CerealMixin(object):
+class BaseCerealMixin(object):
     '''Inspired by:
     http://www.pivotaltracker.com/help/api#Response_Controlling_Parameters
+
+    Doesn't have any options applied (used to modify field selection and
+    CerealMixin behaviour).
     '''
 
-    # If the ':default' option is not included in the
-    # field list of a serializer, the serializer's default list of fields
-    # will be cleared and replaced by the list of fields defined by the
-    # response-controlling parameters.
-    REQUIRE_DEFAULT_OPTION = True
+    # The mixin that is applied to nested serializers if they don't have
+    # BaseCerealMixin as one of their class' bases.
+    recursively_applied_mixin = BaseCerealMixin
 
     class CerealFields:
         def __init__(self):
@@ -53,7 +54,7 @@ class CerealMixin(object):
         :return: CerealFields object
 
         '''
-        cereal_fields = CerealMixin.CerealFields()
+        cereal_fields = BaseCerealMixin.CerealFields()
 
         # base case (when the function is called initially)
         if field is None:
@@ -85,7 +86,7 @@ class CerealMixin(object):
                     )
 
                 cereal_fields.nested_fields[nested[0]] = \
-                    CerealMixin.\
+                    BaseCerealMixin.\
                     parse_fields_to_nested_tree_rec(
                         field_iter, nested[1], True
                     )
@@ -136,12 +137,12 @@ class CerealMixin(object):
         # iterations in the while(True) loop of the recursive function.
         flat_fields = flat_field_string.replace(')', ',)')
         flat_fields = flat_fields.split(',')
-        return CerealMixin\
+        return BaseCerealMixin\
             .parse_fields_to_nested_tree_rec(iter(flat_fields))
 
     def get_default_field_names(self, declared_fields, model_info):
         return set(
-            super(CerealMixin, self
+            super(BaseCerealMixin, self
                   ).get_default_field_names(declared_fields, model_info)
         )
 
@@ -162,7 +163,7 @@ class CerealMixin(object):
 
         if not cereal_fields or (self.REQUIRE_DEFAULT_OPTION and
                               'default' in cereal_fields.options):
-            return super(CerealMixin, self).get_field_names(
+            return super(BaseCerealMixin, self).get_field_names(
                 declared_fields, info
             )
 
@@ -204,7 +205,7 @@ class CerealMixin(object):
                                for field_name in declared_fields
                                if field_name in new_fields}
 
-        field_names = super(CerealMixin, self).get_field_names(
+        field_names = super(BaseCerealMixin, self).get_field_names(
             new_declared_fields, info
         )
         # Set the fields back to how they are explicitly defined in the
@@ -230,7 +231,7 @@ class CerealMixin(object):
 
         if not self.cereal_fields or (self.REQUIRE_DEFAULT_OPTION and
                                    'default' in self.cereal_fields.options):
-            return super(CerealMixin, self).get_fields(
+            return super(BaseCerealMixin, self).get_fields(
                 *args, **kwargs
             )
 
@@ -261,10 +262,10 @@ class CerealMixin(object):
             else:
                 many = False
             field_class = original_field.__class__
-            if not issubclass(field_class, CerealMixin):
+            if not issubclass(field_class, BaseCerealMixin):
                 new_field_class = type(
                     'CerealTemp' + field_class.__name__,
-                    (CerealMixin, field_class),
+                    (self.recursively_applied_mixin, field_class),
                     {}
                 )
             else:
@@ -291,7 +292,7 @@ class CerealMixin(object):
             )
             self._declared_fields[nested_field_key] = new_field
 
-        fields = super(CerealMixin, self).get_fields(
+        fields = super(BaseCerealMixin, self).get_fields(
             *args, **kwargs
         )
         # Reset the fields of the serializer, or they will be picked up in
@@ -355,7 +356,7 @@ class CerealMixin(object):
                         MethodSerializerMixin not in parent_bases:
             kwargs.pop('method_name', None)
 
-        super(CerealMixin, self).__init__(
+        super(BaseCerealMixin, self).__init__(
             *args, **kwargs
         )
 
@@ -379,3 +380,44 @@ class CerealMixin(object):
             "Saving hasn't been tested with the CerealMixin. "
             "Use at your own peril."
         )
+
+
+class DefaultOptionMixin(object):
+    ''''
+    If the ':default' option is not included in the
+    field list of a serializer, the serializer's default list of fields
+    will be cleared and replaced by the list of fields defined by the
+    response-controlling parameters.
+    '''
+
+    def get_fields(self, *args, **kwargs):
+
+        # Meta doesn't exist on SerializerMethodField serializers
+        meta = getattr(self, 'Meta', None)
+
+        is_circular = getattr(meta, 'circular', False)
+        depth = getattr(meta, 'depth', None)
+        if not self.cereal_fields and is_circular and depth != 0:
+            # protect against circular serializers recursing infinitely
+            return {}
+
+        if 'default' in self.cereal_fields.options:
+            return super(BaseCerealMixin, self).get_fields(
+                *args, **kwargs
+            )
+        return super(DefaultOptionMixin, self).get_fields(
+            *args, **kwargs
+        )
+
+
+class SchemaOptionMixin(object):
+    '''
+    If the ':schema' option is included in the field list of a serializer,
+    the serializer will return the fields available on that serializer as well
+    as the rest of the serialized data on a data request from the serializer.
+    '''
+    pass
+
+
+class CerealMixin(DefaultOptionMixin, BaseCerealMixin):
+    recursively_applied_mixin = CerealMixin
