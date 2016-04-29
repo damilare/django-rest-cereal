@@ -1,4 +1,4 @@
 django
 djangorestframework==3.2.4
 mysql-python
--e git+https://nl-bot:locum123@github.com/networklocum/django-rest-cereal@master#egg=rest_cereal
+-e git+https://github.com/networklocum/django-rest-cereal@master#egg=rest_cereal
