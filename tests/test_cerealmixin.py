@@ -6,7 +6,7 @@ from rest_framework.test import APIClient, APIRequestFactory, APITestCase, \
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer
 
-from rest_cereal.mixins import CerealMixin, CerealException
+from rest_cereal.mixins import CerealMixin, CerealException, SchemaMixin
 from rest_cereal.serializers import LazySerializer, MethodSerializerMixin
 
 from cerealtestingapp.models import NestedTestModel, TwoNestedTestModel, \
@@ -168,7 +168,7 @@ class NestLevel1TestSerializer(ModelSerializer):
         fields = ('val', 'nest')
 
 
-class BaseTestSerializer(CerealMixin, ModelSerializer):
+class BaseTestSerializer(CerealMixin, ModelSerializer, SchemaMixin):
     nest = NestLevel1TestSerializer()
 
     class Meta:
@@ -324,6 +324,36 @@ class CerealMixinTest(unittest.TestCase):
             '{"val":3}'
         )
 
+
+class TestOptions(unittest.TestCase):
+    request_factory = APIRequestFactory()
+    request_data = {}
+
+    def setUp(self):
+        self.client = APIClient()
+        self.model1 = NestedTestModel.objects.create(val=1)
+        self.model2 = NestedTestModel.objects.create(nest=self.model1, val=2)
+        self.model3 = NestedTestModel.objects.create(nest=self.model2, val=3)
+        self.url = '/nest/{0}'.format(self.model1.id)
+
+    def _get_response(self, fields_string):
+        if fields_string:
+            self.request_data['fields'] = fields_string
+        elif self.request_data.get('fields'):
+            del self.request_data['fields']
+        request = self.request_factory.get(self.url, self.request_data)
+        api_view = NestedTestView.as_view({'get': 'retrieve'})
+        response = api_view(request, pk=self.model3.id)
+        response.render()
+        return response
+
+    def test_schema_option(self):
+        fields_string = ':schema'
+        response = self._get_response(fields_string)
+        self.assertEqual(
+            response.content,
+            '{"val":"str", "nest": }'
+        )
 
 class CircularTestSerializer1(CerealMixin, ModelSerializer):
     nest = LazySerializer('CircularTestSerializer2')

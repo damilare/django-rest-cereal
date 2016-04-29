@@ -211,6 +211,7 @@ class CerealMixin(object):
         # serializer class Meta.
         setattr(self.Meta, 'exclude', original_exclude)
         setattr(self.Meta, 'fields', original_fields)
+
         return field_names
 
     def get_fields(self, *args, **kwargs):
@@ -379,3 +380,24 @@ class CerealMixin(object):
             "Saving hasn't been tested with the CerealMixin. "
             "Use at your own peril."
         )
+
+
+class SchemaMixin(object):
+    def get_field_names(self, *args, **kwargs):
+        field_names = super(SchemaMixin,self).get_field_names(*args, **kwargs)
+
+        if 'schema' in self.cereal_fields.options:
+            field_names.append("schema")
+        return field_names
+
+    def get_fields(self   ,*args,** kwargs):
+        fields = super(SchemaMixin, self).get_fields(*args, **kwargs)
+        if 'schema' in self.cereal_fields.options:
+            # build serializer
+            import ipdb; ipdb.set_trace()
+
+            # get all field names possible for this serializer
+
+            # For each field, annotate type
+            #
+        return fields

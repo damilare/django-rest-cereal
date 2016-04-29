@@ -1,0 +1,6 @@
+test:
+    build: .
+    command: python manage.py test
+    volumes:
+        - .:/code
+
