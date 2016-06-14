@@ -82,14 +82,14 @@ class LazySerializer(object):
             # remove the LazySerializer fields
             serializer_class.Meta.fields = \
                 tuple(fld for fld in serializer_class.Meta.fields
-                      if fld not in circular_fields[serializer_class].keys())
+                      if fld not in list(circular_fields[serializer_class].keys()))
 
         # Next, turn the LazyFields into real fields and add the field back to
         # the class' 'field' attribute (because the class no longer has
         # error-causing LazySerializer fields).
-        for serializer_class, fields in circular_fields.iteritems():
+        for serializer_class, fields in circular_fields.items():
             _declared_fields = getattr(serializer_class, '_declared_fields', {})
-            for field_name, field in fields.iteritems():
+            for field_name, field in fields.items():
                 field_class = global_namespace.get(
                     field.serializer_class, None
                 )
@@ -114,7 +114,7 @@ class LazySerializer(object):
 
             # put the LazerSerializer fields back
             serializer_class.Meta.fields = \
-                tuple(list(serializer_class.Meta.fields) + fields.keys())
+                tuple(list(serializer_class.Meta.fields) + list(fields.keys()))
 
 
 class MethodSerializerMixin(object):

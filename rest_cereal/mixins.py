@@ -58,7 +58,7 @@ class CerealMixin(object):
         # base case (when the function is called initially)
         if field is None:
             try:
-                field = field_iter.next()
+                field = next(field_iter)
             except StopIteration:
                 return cereal_fields
 
@@ -104,7 +104,7 @@ class CerealMixin(object):
                 cereal_fields.normal_fields.append(field)
 
             try:
-                next_field = field_iter.next()
+                next_field = next(field_iter)
             except StopIteration:
                 # the end of the list has been reached
                 if close_bracket:
@@ -192,7 +192,7 @@ class CerealMixin(object):
                 )
 
         new_fields = cereal_fields.normal_fields + \
-                     cereal_fields.nested_fields.keys()
+                     list(cereal_fields.nested_fields.keys())
         setattr(self.Meta, 'exclude', [])
         setattr(self.Meta, 'fields', new_fields)
 
