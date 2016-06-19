@@ -46,7 +46,7 @@ def parse_fields_to_nested_tree_rec(field_iter, field=None,
     :return: CerealFields object
 
     '''
-    cereal_fields = CerealMixin.CerealFields()
+    cereal_fields = CerealFields()
 
     # base case (when the function is called initially)
     if field is None:
@@ -78,7 +78,6 @@ def parse_fields_to_nested_tree_rec(field_iter, field=None,
                 )
 
             cereal_fields.nested_fields[nested[0]] = \
-                CerealMixin.\
                 parse_fields_to_nested_tree_rec(
                     field_iter, nested[1], True
                 )
@@ -129,5 +128,5 @@ def parse_fields_to_nested_tree(flat_field_string):
     # iterations in the while(True) loop of the recursive function.
     flat_fields = flat_field_string.replace(')', ',)')
     flat_fields = flat_fields.split(',')
-    return CerealMixin.parse_fields_to_nested_tree_rec(iter(flat_fields))
+    return parse_fields_to_nested_tree_rec(iter(flat_fields))
 
