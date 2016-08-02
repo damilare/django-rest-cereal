@@ -1,5 +1,15 @@
 import itertools
-from rest_framework.exceptions import APIException
+
+# This gross block of code is to allow you to use the
+# parse_fields_to_nested_tree methods without installing rest_framework/django
+import importlib
+rest_framework_loader = importlib.find_loader("rest_framework")
+django_installed = rest_framework_loader is not None
+if django_installed:
+    from rest_framework.exceptions import APIException
+else:
+    class APIException(Exception):
+        pass
 
 
 class CerealException(APIException):
